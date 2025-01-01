@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: hoarder-web
+  ports:
+    - protocol: TCP
+      port: 3000        # Cluster-internal service port
+      targetPort: 3000  # Pod target port
+  type: ClusterIP
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hoarder-web-ingress
+spec:
+  entryPoints:
+    - websecure           # The entry point for HTTPS traffic (adjust if using HTTP)
+  routes:
+    - match: Host(`hoarder.super.fish`)  # Use the desired domain here
+      kind: Rule
+      priority: 10
+      services:
+        - kind: Service
+          name: web
+          port: 3000   # The port of the service to route traffic to
+          scheme: http
+  tls:
+    secretName: hoarder.super.fish-tls   # Secret name for TLS (SSL)
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hoarder.super.fish
+spec:
+  dnsNames:
+    - hoarder.super.fish   # The domain to secure with TLS
+  secretName: hoarder.super.fish-tls    # Secret name for storing the TLS certificate
+  issuerRef:
+    name: letsencrypt    # Replace with your issuer's name if different
+    kind: ClusterIssuer
